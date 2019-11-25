@@ -1,8 +1,8 @@
 ---
-title: "p8105_hw6_dna2118.Rmd"
+title: "p8105 Homework 6"
 author: "Dionna Attinson"
 date: "11/21/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -42,7 +42,7 @@ read.csv("./birthweight.csv") %>%
     malform = as.factor(malform)) %>% 
 janitor::clean_names()
 ```
-#### Now, we will propose a regression model. This regression model was chosen through previous research that has been done that demonstrates that mother's race and smoking status impact birthweight. 
+#### Now, we will propose a regression model. This regression model was chosen through previous research that demonstrates that mother's race, length at birth, and smoking status impact birthweight. 
 ```{r}
 fit = lm(bwt ~  smoken + mrace + blength, data = birthweight_data)
 summary(fit)
