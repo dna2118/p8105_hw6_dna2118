@@ -105,3 +105,70 @@ cv_df %>%
 #### Through this violin plot, we get a sense of variance in prediction error and can compare prediction error distributions across methods. The comparison 2 model using head circumference, length, sex, and all interactions (including the three-way interaction) between them is the best model in this case.`
 
 ## Problem 2 
+#### For this problem, we’ll use the 2017 Central Park weather data that we’ve seen elsewhere. 
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+#### The code chunk below uses 5000 bootstrap samples. Each sample produces estimates of r² and log(β0*β1).
+```{r}
+weather_results = 
+  weather_df %>% 
+  modelr::bootstrap(n = 5000) %>% 
+  mutate(
+    models = map(strap, ~ lm(tmax ~ tmin, data = .x)),
+    results = map(models, broom::tidy),
+    glance = map(models, broom::glance)) %>% 
+  select(results, glance, .id) %>% 
+  unnest(results) %>% 
+  pivot_wider( 
+    names_from = term,
+    values_from = c(estimate, std.error, glance),
+    id_cols = .id, 
+    ) %>%
+  janitor::clean_names() %>%
+  unnest(c(glance_intercept), .names_repair = "universal") %>% 
+  mutate(
+    log_b0_b1 = log(estimate_intercept * estimate_tmin)
+  ) 
+```
+
+#### The following code chunk plots the distribution of r² and log(β0 * β1) 
+```{r}
+plot1 = weather_results %>% 
+  ggplot(aes(x = r.squared)) + 
+  geom_histogram() + 
+  geom_density() +
+  theme_minimal() 
+plot2 = weather_results %>% 
+  ggplot(aes(x = log_b0_b1)) + 
+  geom_histogram() + 
+  geom_density() +
+  theme_minimal() 
+
+plot1 + plot2
+```
+
+#### Both the distributions appear to have a normal distrubution. The mean of r² is `r weather_results %>% pull(r.squared) %>% mean` and the median of r² is `r weather_results %>% pull(r.squared) %>% median`. The mean of log(β0 * β1) is `r weather_results %>% pull(log_b0_b1) %>% mean` and the median of log(β0 * β1) is `r weather_results %>% pull(log_b0_b1) %>% median`. 
+
+#### The following tables give the 2.5% and 97.5% quantiles for the r² and log(β0 * β1) for a 95% confidence interval. 
+```{r}
+weather_results %>% 
+  pull(r.squared) %>% 
+  quantile(c(0.025, 0.975)) %>% 
+  knitr::kable(col.names = "R-Squared")
+weather_results %>% 
+  pull(log_b0_b1) %>% 
+  quantile(c(0.025, 0.975)) %>% 
+  knitr::kable(col.names = "Log(B0*B1)")
+```
+
